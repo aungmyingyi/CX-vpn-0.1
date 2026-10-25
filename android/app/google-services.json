@@ -1,1 +1,29 @@
-
+{
+  "project_info": {
+    "project_number": "901919108508",
+    "project_id": "cxvpntest",
+    "storage_bucket": "cxvpntest.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:901919108508:android:140aa78fa385e44c0aac59",
+        "android_client_info": {
+          "package_name": "com.example.cx_vpn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVUSe7wiGQMEGoUQFYTK9XiscMhIQVuhM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
