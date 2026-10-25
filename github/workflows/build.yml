@@ -1,1 +1,66 @@
+name: Build APK
 
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        cache: true
+
+    - name: Create Android folder
+      run: |
+        rm -rf android
+        flutter create --project-name cx_vpn --platforms=android .
+
+    - name: Configure AndroidManifest (Permissions & VPN Service)
+      run: |
+        MANIFEST="android/app/src/main/AndroidManifest.xml"
+        sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />' $MANIFEST
+        sed -i 's/<application/<application android:usesCleartextTraffic="true"/' $MANIFEST
+        sed -i 's|</application>|    <service android:name="com.flutter_v2ray_client.V2RayVpnService" android:permission="android.permission.BIND_VPN_SERVICE" android:exported="false" android:foregroundServiceType="specialUse">\n            <intent-filter>\n                <action android:name="android.net.VpnService"/>\n            </intent-filter>\n            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="VPN connection"/>\n        </service>\n    </application>|' $MANIFEST
+
+    - name: Fix Android SDK & NDK Versions
+      run: |
+        sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' android/app/build.gradle.kts
+        sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/' android/app/build.gradle.kts
+        sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 34/' android/app/build.gradle.kts
+        sed -i 's/ndkVersion = flutter.ndkVersion/ndkVersion = "27.0.12077973"/' android/app/build.gradle.kts
+        sed -i 's/id("com.android.application") version "[^"]*" apply false/id("com.android.application") version "8.11.1" apply false/' android/settings.gradle.kts
+        sed -i 's/id("com.android.library") version "[^"]*" apply false/id("com.android.library") version "8.11.1" apply false/' android/settings.gradle.kts
+
+    - name: Add Firebase Dependencies
+      run: |
+        # ဒီနေရာမှာ google-services.json ကို GitHub ကနေ ယူဖို့ လိုပါတယ်
+        # လောလောဆယ် ဒီအဆင့်ကို ခဏထားလိုက်ပါ
+
+    - name: Clean and Install dependencies
+      run: |
+        flutter clean
+        flutter pub get
+
+    - name: Build APKs (split per ABI)
+      run: flutter build apk --release --split-per-abi
+
+    - name: Upload APK (arm64-v8a)
+      uses: actions/upload-artifact@v4
+      with:
+        name: cx-vpn-arm64-v8a
+        path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
