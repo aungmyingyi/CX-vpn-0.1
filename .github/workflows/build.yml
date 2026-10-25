@@ -34,14 +34,13 @@ jobs:
       run: |
         cp google-services.json android/app/google-services.json || echo "Warning: google-services.json not found in root"
 
-    - name: Configure AndroidManifest (Permissions & VPN Service)
+    - name: Configure AndroidManifest
       run: |
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />' $MANIFEST
         sed -i 's/<application/<application android:usesCleartextTraffic="true"/' $MANIFEST
         sed -i 's|</application>|    <service android:name="com.flutter_v2ray_client.V2RayVpnService" android:permission="android.permission.BIND_VPN_SERVICE" android:exported="false" android:foregroundServiceType="specialUse">\n            <intent-filter>\n                <action android:name="android.net.VpnService"/>\n            </intent-filter>\n            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="VPN connection"/>\n        </service>\n    </application>|' $MANIFEST
 
-    # ဒီအဆင့်မှာ အဟောင်း Version တွေကို ပြင်ဆင်ပါမယ်
     - name: Fix Android SDK & NDK Versions
       run: |
         sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' android/app/build.gradle.kts
@@ -51,20 +50,25 @@ jobs:
         sed -i 's/id("com.android.application") version "[^"]*" apply false/id("com.android.application") version "8.11.1" apply false/' android/settings.gradle.kts
         sed -i 's/id("com.android.library") version "[^"]*" apply false/id("com.android.library") version "8.11.1" apply false/' android/settings.gradle.kts
 
-    # Firebase Plugin ကို မှန်ကန်တဲ့ နေရာမှာ ထည့်ခြင်း
-    - name: Add Firebase Plugin & Dependencies
+    # Firebase ကို ကိုယ်တိုင် ထည့်သွင်းခြင်း
+    - name: Inject Firebase Config
       run: |
-        # 1. Project level build.gradle.kts မှာ Plugin ထည့်ခြင်း
-        sed -i 's/id("com.android.application") version "8.11.1" apply false/id("com.android.application") version "8.11.1" apply false\n    id("com.google.gms.google-services") version "4.4.2" apply false/' android/build.gradle.kts
+        # 1. Project Level (build.gradle.kts)
+        cat << 'EOF' >> android/build.gradle.kts
+        plugins {
+            id("com.google.gms.google-services") version "4.4.2" apply false
+        }
+        EOF
+
+        # 2. App Level (build.gradle.kts)
+        sed -i 's/plugins {/plugins {\n    id("com.google.gms.google-services")/' android/app/build.gradle.kts
         
-        # 2. App level build.gradle.kts မှာ Plugin ထည့်ခြင်း
-        sed -i 's/id("com.android.application")/id("com.android.application")\n    id("com.google.gms.google-services")/' android/app/build.gradle.kts
-        
-        # 3. Firebase Dependencies ထည့်ခြင်း
-        echo 'dependencies {' >> android/app/build.gradle.kts
-        echo '    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))' >> android/app/build.gradle.kts
-        echo '    implementation("com.google.firebase:firebase-firestore")' >> android/app/build.gradle.kts
-        echo '}' >> android/app/build.gradle.kts
+        cat << 'EOF' >> android/app/build.gradle.kts
+        dependencies {
+            implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+            implementation("com.google.firebase:firebase-firestore")
+        }
+        EOF
 
     - name: Clean and Install dependencies
       run: |
