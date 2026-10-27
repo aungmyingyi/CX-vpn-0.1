@@ -30,16 +30,6 @@ jobs:
         rm -rf android
         flutter create --project-name cx_vpn --platforms=android .
 
-    - name: Setup Firebase Config
-      run: |
-        if [ -f google-services.json ]; then
-          cp google-services.json android/app/google-services.json
-          echo "google-services.json copied successfully."
-        else
-          echo "ERROR: google-services.json not found in root directory!"
-          exit 1
-        fi
-
     - name: Configure AndroidManifest
       run: |
         MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -55,26 +45,6 @@ jobs:
         sed -i 's/ndkVersion = flutter.ndkVersion/ndkVersion = "27.0.12077973"/' android/app/build.gradle.kts
         sed -i 's/id("com.android.application") version "[^"]*" apply false/id("com.android.application") version "8.11.1" apply false/' android/settings.gradle.kts
         sed -i 's/id("com.android.library") version "[^"]*" apply false/id("com.android.library") version "8.11.1" apply false/' android/settings.gradle.kts
-
-    - name: Add Firebase Plugin & Dependencies
-      run: |
-        # Project level build.gradle.kts
-        cat << 'EOF' >> android/build.gradle.kts
-        plugins {
-            id("com.google.gms.google-services") version "4.4.2" apply false
-        }
-        EOF
-
-        # App level build.gradle.kts
-        sed -i 's/plugins {/plugins {\n    id("com.google.gms.google-services")/' android/app/build.gradle.kts
-        
-        # Add Dependencies
-        cat << 'EOF' >> android/app/build.gradle.kts
-        dependencies {
-            implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-            implementation("com.google.firebase:firebase-firestore")
-        }
-        EOF
 
     - name: Clean and Install dependencies
       run: |
